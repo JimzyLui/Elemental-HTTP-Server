@@ -9,6 +9,8 @@ const fx = require("./functions.js");
 
 const server = http.createServer((req, res) => {
   const { method, url } = req;
+  let arrBody = [];
+
   //console.log("method: ", method);
   //console.log("url: ", url);
   switch (method) {
@@ -106,7 +108,7 @@ const server = http.createServer((req, res) => {
       }
       break;
     case "POST":
-      const arrBody = [];
+      arrBody = [];
       req
         .on("data", chunk => {
           arrBody.push(chunk);
@@ -116,12 +118,71 @@ const server = http.createServer((req, res) => {
           // at this point, `body` has the entire request body stored in it as a string
           const objBody = querystring.parse(strBody);
           // console.log("objBody: ", objBody);
-          fx.createFile(objBody);
+          const fileNameShort = objBody.elementName.toLowerCase() + ".html";
+          const fileName = dirElements + fileNameShort;
+          const createElementFromTemplate = require("./templateElement.js");
+          const data = createElementFromTemplate(objBody);
+
+          fs.open(fileName, "wx", (err, data) => {
+            //wx - open for writing, fail if already exists
+            if (err) {
+              if (err.code === "EEXIST") {
+                console.error(
+                  `${method} Error: ${fileNameShort} already exists`
+                );
+                res.statusCode = 418;
+                res.setHeader("Content-Type", "application/json");
+                res.end(`{ "success" : false }`);
+                return;
+              }
+              throw err;
+            }
+            console.log(`${method}: ${fileNameShort} added.`);
+            res.statusCode = 200;
+            res.setHeader("Content-Type", "application/json");
+            res.end(`{ "success" : true }`);
+          });
         });
 
-      res.statusCode = 200;
-      res.setHeader("Content-Type", "application/json");
-      res.end(`{ "success" : true }`);
+      break;
+    case "PUT":
+      arrBody = [];
+      req
+        .on("data", chunk => {
+          arrBody.push(chunk);
+        })
+        .on("end", () => {
+          const strBody = Buffer.concat(arrBody).toString();
+          // at this point, `body` has the entire request body stored in it as a string
+          const objBody = querystring.parse(strBody);
+          // console.log("objBody: ", objBody);
+          const fileNameShort = objBody.elementName.toLowerCase() + ".html";
+          const fileName = dirElements + fileNameShort;
+          const createElementFromTemplate = require("./templateElement.js");
+          const data = createElementFromTemplate(objBody);
+
+          fs.open(fileName, "r+", (err, data) => {
+            //r+ - open for reading/writing, fail if not exist
+            if (err) {
+              if (err.code === "ENOENT") {
+                console.error(
+                  `${method} Error: ${fileNameShort} does not exist`
+                );
+                res.statusCode = 418;
+                res.setHeader("Content-Type", "application/json");
+                res.end(`{ "success" : false }`);
+                return;
+              }
+              throw err;
+            }
+            console.log(`${method}: ${fileNameShort} updated!`);
+
+            res.statusCode = 200;
+            res.setHeader("Content-Type", "application/json");
+            res.end(`{ "success" : true }`);
+          });
+        });
+
       break;
     case "DELETE":
       const fileNameToRemove = "./public/elements" + url;
@@ -136,7 +197,7 @@ const server = http.createServer((req, res) => {
           return;
           // throw err;
         }
-        console.log("File Removed!");
+        console.log(`${method}: ${url} removed!`);
 
         res.statusCode = 200;
         res.setHeader("Content-Type", "application/json");

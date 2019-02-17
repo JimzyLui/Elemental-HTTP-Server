@@ -71,6 +71,24 @@ const getUpdatedIndexFile = () => {
 const createFile = objElementData => {
   const fileName =
     dirElements + objElementData.elementName.toLowerCase() + ".html";
+  const createElementFromTemplate = require("./templateElement.js");
+  const data = createElementFromTemplate(objElementData);
+
+  fs.open(fileName, "wx", (err, data) => {
+    //wx - open for writing, fail if already exists
+    if (err) {
+      if (err.code === "EEXIST") {
+        console.error(fileName + " already exists");
+        return;
+      }
+      throw err;
+    }
+  });
+};
+
+const updateFile = objElementData => {
+  const fileName =
+    dirElements + objElementData.elementName.toLowerCase() + ".html";
   // console.log("fileName: ", fileName);
   const createElementFromTemplate = require("./templateElement.js");
   const data = createElementFromTemplate(objElementData);
