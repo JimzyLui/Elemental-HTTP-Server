@@ -127,6 +127,6 @@ const deleteFile = fileName => {
 module.exports = {
   doCredentialsMatch: doCredentialsMatch,
   // getArrDirectory: getArrDirectory,
-  createFile: createFile,
+  // createFile: createFile,
   deleteFile: deleteFile
 };

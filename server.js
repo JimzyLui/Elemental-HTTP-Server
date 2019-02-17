@@ -1,6 +1,6 @@
 const http = require("http");
 const fs = require("fs");
-const headData = require("./head.js");
+// const headData = require("./head.js");
 const querystring = require("querystring");
 const dirElements = __dirname + "/public/elements/";
 
@@ -13,6 +13,35 @@ const server = http.createServer((req, res) => {
 
   //console.log("method: ", method);
   //console.log("url: ", url);
+  const authorization = req.headers.authorization;
+  // console.log("Headers: ", JSON.stringify(req.headers));
+  // console.log("authorization: ", authorization);
+  if (method !== "GET") {
+    // need authentication to proceed
+    if (!authorization) {
+      res.statusCode = 401;
+      res.setHeader(`WWW-Authenticate`, `Basic realm="Secure Area"`);
+      res.end(`<html><body>Not Authorized</body></html>`);
+      return;
+    } else {
+      const authorizationStripped = authorization.replace(
+        "Y2hhcmxlczoxMjM0NQ==",
+        ""
+      );
+      console.log("authorization: ", authorization);
+      console.log("authorizationStripped: ", authorizationStripped);
+      const credResults = fx.doCredentialsMatch(authorizationStripped);
+      console.log("credResults: ", credResults);
+      /*
+      if (!credResults) {
+        res.statusCode = 401;
+        res.setHeader(`WWW-Authenticate`, `Basic realm="Secure Area"`);
+        res.end(`<html><body>Invalid Authentication Credentials</body></html>`);
+        return;
+      }*/
+    }
+  }
+
   switch (method) {
     case "GET":
       switch (url) {
@@ -123,7 +152,7 @@ const server = http.createServer((req, res) => {
           const createElementFromTemplate = require("./templateElement.js");
           const data = createElementFromTemplate(objBody);
 
-          fs.open(fileName, "wx", (err, data) => {
+          fs.open(fileName, "wx", (err, fd) => {
             //wx - open for writing, fail if already exists
             if (err) {
               if (err.code === "EEXIST") {
@@ -137,10 +166,16 @@ const server = http.createServer((req, res) => {
               }
               throw err;
             }
-            console.log(`${method}: ${fileNameShort} added.`);
-            res.statusCode = 200;
-            res.setHeader("Content-Type", "application/json");
-            res.end(`{ "success" : true }`);
+            fs.writeFile(fileName, data, err => {
+              if (err) {
+                console.error(`${method} Error: ${fileNameShort} ${err}.`);
+                return;
+              }
+              console.log(`${method}: ${fileNameShort} added.`);
+              res.statusCode = 200;
+              res.setHeader("Content-Type", "application/json");
+              res.end(`{ "success" : true }`);
+            });
           });
         });
 
@@ -160,9 +195,11 @@ const server = http.createServer((req, res) => {
           const fileName = dirElements + fileNameShort;
           const createElementFromTemplate = require("./templateElement.js");
           const data = createElementFromTemplate(objBody);
-
-          fs.open(fileName, "r+", (err, data) => {
+          console.log("data: ", data);
+          fs.open(fileName, "r+", (err, fd) => {
             //r+ - open for reading/writing, fail if not exist
+            console.log("data2: ", data);
+
             if (err) {
               if (err.code === "ENOENT") {
                 console.error(
@@ -175,11 +212,16 @@ const server = http.createServer((req, res) => {
               }
               throw err;
             }
-            console.log(`${method}: ${fileNameShort} updated!`);
-
-            res.statusCode = 200;
-            res.setHeader("Content-Type", "application/json");
-            res.end(`{ "success" : true }`);
+            fs.writeFile(fileName, data, err => {
+              if (err) {
+                console.error(`${method} Error: ${fileNameShort} ${err}.`);
+                return;
+              }
+              console.log(`${method}: ${fileNameShort} updated!`);
+              res.statusCode = 200;
+              res.setHeader("Content-Type", "application/json");
+              res.end(`{ "success" : true }`);
+            });
           });
         });
 
