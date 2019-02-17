@@ -123,6 +123,26 @@ const server = http.createServer((req, res) => {
       res.setHeader("Content-Type", "application/json");
       res.end(`{ "success" : true }`);
       break;
+    case "DELETE":
+      const fileNameToRemove = "./public/elements" + url;
+      // console.log("delete url: ", fileNameToRemove);
+      fs.unlink(fileNameToRemove, err => {
+        if (err) {
+          res.statusCode = 500;
+          res.setHeader("Content-Type", "application/json");
+          const errMsg = `resource ${url} does not exist`;
+          console.log(method + " Error: ", errMsg);
+          res.end(`{ "error" :  ${errMsg}`);
+          return;
+          // throw err;
+        }
+        console.log("File Removed!");
+
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "application/json");
+        res.end(`{ "success" : true }`);
+      });
+      break;
   }
 });
 
