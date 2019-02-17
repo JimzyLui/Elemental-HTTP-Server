@@ -1,0 +1,131 @@
+const http = require("http");
+const fs = require("fs");
+const headData = require("./head.js");
+const querystring = require("querystring");
+const dirElements = __dirname + "/public/elements/";
+
+const PORT = 8181;
+const fx = require("./functions.js");
+
+const server = http.createServer((req, res) => {
+  const { method, url } = req;
+  //console.log("method: ", method);
+  //console.log("url: ", url);
+  switch (method) {
+    case "GET":
+      switch (url) {
+        case "/css/styles.css":
+          fs.readFile("./public/css/styles.css", (err, data) => {
+            if (err) {
+              console.log(err);
+            }
+            // res.writeHead(200, { "Content-Type": "text/css" });
+
+            res.statusCode = 200;
+            res.setHeader("Content-Type", "text/css");
+            res.write(data.toString());
+            res.end();
+          });
+          break;
+        case "/":
+          fs.readdir(dirElements, (err, files) => {
+            if (err) {
+              console.log("Err: ", err);
+            }
+            const arrDirectory = [];
+            // console.log("files: ", files);
+            files.forEach(fileName => {
+              console.log(fileName);
+              arrDirectory.push(fileName);
+            });
+            // console.log("arrDirectory: ", arrDirectory);
+
+            const arrElementList = arrDirectory.map(name => {
+              name = name.split(".")[0];
+              const createListItemFromTemplate = require("./templateListItem.js");
+              const htmlListItem = createListItemFromTemplate(name);
+              // console.log("htmlListItem", htmlListItem);
+              return htmlListItem;
+            });
+
+            console.log(
+              "arrElementList: ",
+              arrElementList,
+              arrElementList.length
+            );
+
+            const createIndexFromTemplate = require("./templateIndex.js");
+
+            const htmIndex = createIndexFromTemplate(arrElementList);
+            // console.log("htmIndex: ", htmIndex);
+            // res.writeHead(200, { "Content-Type": "text/html" });
+
+            res.statusCode = 200;
+            res.setHeader("Content-Type", "text/html");
+            res.write(htmIndex);
+            // const serverResponse = `${headData.status200}\n\n`;
+
+            res.end();
+            // res.end(serverResponse);
+            return htmIndex;
+          });
+
+          break;
+        case "/favicon.ico":
+          break;
+        default:
+          // formulate file name & check if exists (serve it), else 404
+          const fileNameToLoad = "./public/elements" + url;
+          console.log("fileNameToLoad: ", fileNameToLoad);
+          fs.readFile(fileNameToLoad, (err, data) => {
+            if (err) {
+              console.log(err);
+              console.log("It's broke!");
+              fs.readFile("./public/404.html", (err, data) => {
+                if (err) {
+                  console.log(err);
+                  console.log("It's really broke!");
+                }
+                // res.writeHead(404, { "Content-Type": "text/html" });
+
+                res.statusCode = 404;
+                res.setHeader("Content-Type", "text/html");
+                res.write(data.toString());
+                res.end();
+                return;
+              });
+              return;
+            }
+            // res.writeHead(200, { "Content-Type": "text/html" });
+            res.statusCode = 200;
+            res.setHeader("Content-Type", "text/html");
+            res.write(data.toString());
+            res.end();
+          });
+          break;
+      }
+      break;
+    case "POST":
+      const arrBody = [];
+      req
+        .on("data", chunk => {
+          arrBody.push(chunk);
+        })
+        .on("end", () => {
+          const strBody = Buffer.concat(arrBody).toString();
+          // at this point, `body` has the entire request body stored in it as a string
+          const objBody = querystring.parse(strBody);
+          // console.log("objBody: ", objBody);
+          fx.createFile(objBody);
+        });
+
+      res.statusCode = 200;
+      res.setHeader("Content-Type", "application/json");
+      res.end(`{ "success" : true }`);
+      break;
+  }
+});
+
+server.listen(PORT, () => {
+  console.log(`Listening on port: ${PORT}`);
+});
